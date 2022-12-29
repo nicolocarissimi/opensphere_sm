@@ -1,8 +1,9 @@
+import mlflow
+import numpy as np
 import os
 import os.path as osp
 import time
 import yaml
-import numpy as np
 
 import torch
 import torch.nn as nn
@@ -112,6 +113,9 @@ class IterRunner():
             model_path = osp.join(self.model_dir, model_name)
             torch.save(self.model[module]['net'].state_dict(), model_path)
 
+        print(f'****** self.model_dir: {self.model_dir}')
+        mlflow.log_artifacts(self.model_dir, 'models')
+
     def train(self):
         data, labels = next(self.train_loader)
         data, labels = data.to(self.rank), labels.to(self.rank)
@@ -152,6 +156,10 @@ class IterRunner():
             }
             self.train_buffer.update(msg)
 
+            # self.train_buffer.update averages all values in msg
+            mlflow.log_metrics(metrics=msg, step=self._iter)
+
+
     @torch.no_grad()
     def val(self):
         # switch to test mode
@@ -181,6 +189,9 @@ class IterRunner():
         if self.rank == 0:
             self.val_buffer.update(msg)
 
+            # self.val_buffer.update averages all values in msg
+            mlflow.log_metrics(metrics=msg, step=self._iter)
+
 
     def run(self):
         while self._iter <= self._max_iters:
@@ -189,6 +200,7 @@ class IterRunner():
                 self.val()
 
             if self._iter in self.save_iters and self.rank == 0:
+                print('*************** saving model')
                 self.save_model()
 
             self.train()

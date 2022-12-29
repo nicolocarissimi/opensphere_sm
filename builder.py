@@ -74,7 +74,7 @@ def build_dataloader(cfg):
         loader_cfg['num_workers'] = worker_per_gpu
  
         dataloader = build_from_cfg(loader_cfg, 'torch.utils.data')
-    
+
         return dataloader
 
 

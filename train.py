@@ -1,7 +1,8 @@
+import argparse
+import mlflow
 import os
 import yaml
 import time
-import argparse
 
 import torch
 import torch.multiprocessing as mp
@@ -10,6 +11,8 @@ import torch.distributed as dist
 from datetime import datetime
 from runner import IterRunner
 from utils import fill_config
+from utils_re import mlflow_utils
+from utils_re.settings import MLFLOW_TRACKING_URI
 from builder import build_dataloader, build_model
 
 
@@ -27,11 +30,21 @@ def parse_args():
     return args
 
 def main_worker(rank, world_size, config):
+
+    print(f'******************* main_woker rank: {rank}')
+
+    if rank == 0:
+        mlflow.set_tracking_uri(MLFLOW_TRACKING_URI)
+        mlflow_utils.start_run(experiment_name=config['experiment_tracking']['experiment_name'],
+                               run_name=config['experiment_tracking']['run_name'],
+                               description=config['experiment_tracking']['run_description'])
+
     # init processes
     backend = config['parallel']['backend']
     dist_url = config['parallel']['dist_url']
     dist.init_process_group(
             backend=backend, init_method=dist_url,
+        #     backend=backend,
             world_size=world_size, rank=rank)
 
     # init dataloader
@@ -40,11 +53,13 @@ def main_worker(rank, world_size, config):
 
     # init model
     torch.cuda.set_device(rank)
+
     feat_dim = config['model']['backbone']['net']['out_channel']
     config['model']['head']['net']['feat_dim'] = feat_dim
     num_class = len(train_loader.dataset.classes)
     config['model']['head']['net']['num_class'] = num_class
     model = build_model(config['model'])
+
     if rank==0:
         print(model)
 
@@ -57,6 +72,14 @@ def main_worker(rank, world_size, config):
 
 
 if __name__ == '__main__':
+
+    cuda_devs = os.environ['CUDA_VISIBLE_DEVICES']
+    print(f'**************** CUDA_VISIBLE_DEVICES={cuda_devs}')
+    # data_location = os.environ.get('SM_CHANNEL_TRAINING')
+    # print(f'**************** looking into {data_location}]')
+    # for (dir_path, dir_names, file_names) in os.walk(os.environ.get('SM_CHANNEL_TRAINING')):
+    #     print(f'**************** {dir_names} {file_names}]')
+
     # get arguments and config
     args = parse_args()
 
@@ -88,6 +111,9 @@ if __name__ == '__main__':
             print(datetime.now())
             time.sleep(600)
 
+    print(f'**************** world_size: {world_size}')
+
+    # main_worker(0, 1, config)
     # start multiple processes
     mp.spawn(
         main_worker,

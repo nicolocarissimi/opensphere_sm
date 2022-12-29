@@ -1,4 +1,5 @@
 import random
+import os
 import os.path as osp
 
 from .utils import image_pipeline
@@ -6,13 +7,13 @@ from torch.utils.data import Dataset
 
 
 class ClassDataset(Dataset):
-    def __init__(self, name, data_dir, ann_path,
+    def __init__(self, name, data_dir, ann_file,
             test_mode=False, noise_ratio=None, seed=None):
         super().__init__()
 
         self.name = name
-        self.data_dir = data_dir
-        self.ann_path = ann_path
+        self.data_dir = os.environ.get(f'SM_CHANNEL_{name.upper()}')
+        self.ann_file = ann_file
         self.test_mode = test_mode
         self.noise_ratio = noise_ratio
         self.seed = seed
@@ -23,7 +24,7 @@ class ClassDataset(Dataset):
     def get_data(self):
         """Get data from a provided annotation file.
         """
-        with open(self.ann_path, 'r') as f:
+        with open(osp.join(self.data_dir, self.ann_file), 'r') as f:
             lines = f.readlines()
 
         self.data_items = []

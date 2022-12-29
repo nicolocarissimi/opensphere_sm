@@ -1,3 +1,16 @@
+experiment_tracking:
+  experiment_name: sphereface2-training-test
+  experiment_description: 'sphereface2 training test with sagemalker'
+  run_name: sphereface2-training-test
+  run_description: 'run description'
+
+execution:
+  base_image: '249265253269.dkr.ecr.eu-west-1.amazonaws.com/cv-ml-model-training:emotion_classifier-tensorflow-2.10-py39-v1.1.0'
+  # instance_type: 'ml.g5.12xlarge'
+  instance_type: 'ml.g4dn.12xlarge'
+  # instance_type: 'ml.m5.large'
+  instance_count: 1
+
 project:
   proj_dir: project/
   model_dir: models/
@@ -10,15 +23,15 @@ project:
   val_log:
     path: val.log
     screen_intvl: 1
-    headers: {LFW: ':3.3f', AgeDB-30: ':3.3f', CA-LFW: ':3.3f',
-      CP-LFW: ':3.3f'}
-  val_intvl: 2000
-  save_iters: [96000, 97000, 98000, 99000, 100000]
+    # headers: {LFW: ':3.3f', AgeDB-30: ':3.3f', CA-LFW: ':3.3f',
+    #   CP-LFW: ':3.3f'}
+    headers: {LFW: ':3.3f'}
+  val_intvl: 200
+  save_iters: [10, 96000, 97000, 98000, 99000, 100000]
 data:
   base:
     dataset:
       type: PairDataset
-      data_dir: data/val/
       test_mode: true
     dataloader: {type: DataLoader, batch_size: 64,
       shuffle: false, drop_last: false, num_workers: 4,
@@ -27,31 +40,32 @@ data:
     dataset:
       type: ClassDataset
       name: VGGFace2
-      data_dir: data/train/
-      ann_path: data/train/vggface2_train_ann.txt
+      data_dir: s3://cv-ml-face-recognition/data/opensphere_data/vggface2_small/
+      ann_file: vggface2_train_ann.txt
       test_mode: false
     dataloader: {batch_size: 512, shuffle: true, drop_last: true}
   val:
   - dataset:
       name: LFW
-      ann_path: data/val/lfw_ann.txt
+      data_dir: s3://cv-ml-face-recognition/data/opensphere_data/lfw/
+      ann_file: lfw_ann.txt
       metrics:
       - ACC
-  - dataset:
-      name: AgeDB-30
-      ann_path: data/val/agedb_30_ann.txt
-      metrics:
-      - ACC
-  - dataset:
-      name: CA-LFW
-      ann_path: data/val/calfw_ann.txt
-      metrics:
-      - ACC
-  - dataset:
-      name: CP-LFW
-      ann_path: data/val/cplfw_ann.txt
-      metrics:
-      - ACC
+  # - dataset:
+  #     name: AgeDB-30
+  #     ann_file: agedb_30_ann.txt
+  #     metrics:
+  #     - ACC
+  # - dataset:
+  #     name: CA-LFW
+  #     ann_file: calfw_ann.txt
+  #     metrics:
+  #     - ACC
+  # - dataset:
+  #     name: CP-LFW
+  #     ann_file: cplfw_ann.txt
+  #     metrics:
+  #     - ACC
 parallel:
   backend: nccl
   dist_url: tcp://127.0.0.1:21119

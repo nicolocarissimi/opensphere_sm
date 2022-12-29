@@ -1,4 +1,5 @@
 import torch
+import os
 import os.path as osp
 
 import torch
@@ -9,13 +10,13 @@ from .utils import image_pipeline, get_metrics
 
 
 class PairDataset(Dataset):
-    def __init__(self, name, data_dir, ann_path, metrics,
+    def __init__(self, name, data_dir, ann_file, metrics,
             test_mode=True):
         super().__init__()
 
         self.name = name
-        self.data_dir = data_dir
-        self.ann_path = ann_path
+        self.data_dir = os.environ.get(f'SM_CHANNEL_{name.upper()}')
+        self.ann_file = ann_file
         self.metrics = metrics
         self.test_mode = test_mode
 
@@ -25,7 +26,7 @@ class PairDataset(Dataset):
     def get_data(self):
         """Get data from an annotation file.
         """
-        with open(self.ann_path, 'r') as f:
+        with open(osp.join(self.data_dir, self.ann_file), 'r') as f:
             lines = f.readlines()
 
         paths = set()
@@ -43,7 +44,7 @@ class PairDataset(Dataset):
     def get_label(self):
         """Get labels from an annoation file
         """
-        with open(self.ann_path, 'r') as f:
+        with open(osp.join(self.data_dir, self.ann_file), 'r') as f:
             lines = f.readlines()
 
         path2index = {item['path']: idx 
